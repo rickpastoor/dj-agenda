@@ -13,9 +13,6 @@ final class SonosOutput: Output {
         }
     }
 
-    /// Voorkeurskamer zoals in de Sonos-app. Speelt die kamer (of zijn groep), dan wint hij;
-    /// anders neemt de app de groep die Spotify speelt. Leeg: altijd de groep die speelt.
-    var room: String
     /// Vast IP als terugval, voor als Bonjour niets vindt.
     var fixedHost: String
     /// De DJ volgt het volume van elke speaker, plus dit aantal stappen (de muziek gaat zelf zachter).
@@ -42,14 +39,13 @@ final class SonosOutput: Output {
     /// Eén verversing tegelijk, ook als de DJ-lus en de testknop tegelijk vragen.
     private var refreshing: Task<SonosGroup, Error>?
 
-    init(room: String, fixedHost: String, server: AudioServer, speaker: Speaker) {
-        self.room = room
+    init(fixedHost: String, server: AudioServer, speaker: Speaker) {
         self.fixedHost = fixedHost
         self.server = server
         self.speaker = speaker
     }
 
-    var label: String { "Sonos \(group?.name ?? room)".trimmingCharacters(in: .whitespaces) }
+    var label: String { group.map { "Sonos \($0.name)" } ?? "Sonos" }
 
     func reset() {
         refreshing = nil
@@ -67,19 +63,15 @@ final class SonosOutput: Output {
         return !["x-sonos-htastream:", "x-rincon-stream:"].contains { uri.hasPrefix($0) }
     }
 
-    /// Kies een groep. Volgorde: de voorkeurskamer als die speelt, dan de groep van nu als die
-    /// nog speelt (niet heen en weer springen), dan een andere groep die speelt. Speelt er niets,
-    /// dan de voorkeurskamer, de groep van nu, of de eerste.
-    nonisolated static func pick(_ groups: [SonosGroup], playing: Set<String>, room: String, current: String?) -> SonosGroup? {
-        let preferred = room.isEmpty ? nil : groups.first { $0.contains(room: room) }
+    /// Volg de muziek: de groep van nu zolang die speelt (niet heen en weer springen), anders
+    /// een groep die wel speelt. Speelt er niets, dan blijft de groep van nu (of de eerste).
+    nonisolated static func pick(_ groups: [SonosGroup], playing: Set<String>, current: String?) -> SonosGroup? {
         let now = groups.first { $0.coordinator == current }
-        let isPlaying = { (g: SonosGroup?) in g.map { playing.contains($0.coordinator) } ?? false }
-        if isPlaying(preferred) { return preferred }
-        if isPlaying(now) { return now }
+        if let now, playing.contains(now.coordinator) { return now }
         if let other = groups.filter({ playing.contains($0.coordinator) }).min(by: { $0.name < $1.name }) {
             return other
         }
-        return preferred ?? now ?? groups.min { $0.name < $1.name }
+        return now ?? groups.min { $0.name < $1.name }
     }
 
     private func currentGroup() async throws -> SonosGroup {
@@ -111,8 +103,8 @@ final class SonosOutput: Output {
             return out
         }
 
-        guard let chosen = Self.pick(groups, playing: playing, room: room, current: group?.coordinator) else {
-            throw Failure.notFound(room)
+        guard let chosen = Self.pick(groups, playing: playing, current: group?.coordinator) else {
+            throw Failure.notFound("")
         }
         if chosen != group {
             log.info("Sonos: \(chosen.name, privacy: .public) (coördinator \(chosen.coordinatorHost ?? "?", privacy: .public)); speelt: \(groups.filter { playing.contains($0.coordinator) }.map(\.name).joined(separator: ", "), privacy: .public)")
@@ -140,7 +132,7 @@ final class SonosOutput: Output {
         let found = await SonosDiscovery.find()
         log.info("Sonos gevonden: \(found.map { "\($0.room) (\($0.host))" }.joined(separator: ", "), privacy: .public)")
         if let g = await attempt(found.map(\.host) + [fixedHost]) { return g }
-        throw Failure.notFound(room)
+        throw Failure.notFound("")
     }
 
     private func coordinatorClient() async throws -> SonosClient {

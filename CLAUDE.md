@@ -104,13 +104,12 @@ dan probeert de app het pas na 5 minuten opnieuw.
 - **Ontdekken:** Bonjour `_sonos._tcp`, met een vast IP als terugval. Daarna haalt de app elke
   10 s de groepen op (`ZoneGroupState`, bij een speaker die eerder antwoordde) en vraagt hij elke
   coördinator of die speelt. Tv-geluid (`x-sonos-htastream:`) en line-in tellen niet als muziek.
-- **Welke groep** (`SonosOutput.pick`):
-  1. de groep met de voorkeurskamer, als die speelt;
-  2. anders de groep van nu, als die nog speelt (dan springt de app niet heen en weer);
-  3. anders een andere groep die speelt;
-  4. speelt er niets, dan de voorkeurskamer of de groep van nu.
-  Een kamer in een groep telt als die hele groep. Satellieten en de tweede speaker van een
-  stereopaar (`Invisible="1"`) tellen niet als kamer.
+- **Welke groep** (`SonosOutput.pick`): de app volgt altijd de muziek. Er is geen voorkeurskamer.
+  1. de groep van nu, zolang die speelt (dan springt de app niet heen en weer);
+  2. anders een andere groep die speelt;
+  3. speelt er niets, dan blijft de groep van nu staan.
+
+  Satellieten en de tweede speaker van een stereopaar (`Invisible="1"`) tellen niet als kamer.
 - **De DJ als audioclip** via `wss://<ip>:1443/websocket/api`, zoals het PyPI-pakket
   `sonos-websocket` doet. De Sonos zet de muziek zelf zachter.
   - Headers: `X-Sonos-Api-Key: 123e4567-e89b-12d3-a456-426655440000` en

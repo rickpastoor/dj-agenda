@@ -47,7 +47,7 @@ final class AppModel {
         let settings = Settings()
         self.speaker = speaker
         mac = MacOutput(speaker: speaker)
-        sonos = SonosOutput(room: settings.sonosRoom, fixedHost: settings.sonosHost, server: server, speaker: speaker)
+        sonos = SonosOutput(fixedHost: settings.sonosHost, server: server, speaker: speaker)
         sonos.clipBoost = settings.clipBoost
         output = AutoOutput(mode: AutoOutput.Mode(rawValue: settings.outputMode) ?? .auto, mac: mac, sonos: sonos)
         voice = DJVoice(choice: DJVoice.Choice(stored: settings.voice) ?? .cloudMale)
@@ -341,11 +341,6 @@ final class AppModel {
             prepared = nil
             voiceStatus += 1
         }
-    }
-
-    var sonosRoom: String {
-        get { _ = voiceStatus; return sonos.room }
-        set { sonos.room = newValue; settings.sonosRoom = newValue; sonosChanged() }
     }
 
     var sonosClipBoost: Int {

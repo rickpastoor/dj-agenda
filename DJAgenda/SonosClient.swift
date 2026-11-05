@@ -142,10 +142,6 @@ struct SonosGroup: Equatable, Sendable {
         guard let first = rooms.first else { return coordinator }
         return rooms.count > 1 ? "\(first) + \(rooms.count - 1)" : first
     }
-
-    func contains(room: String) -> Bool {
-        rooms.contains { $0.caseInsensitiveCompare(room) == .orderedSame }
-    }
 }
 
 extension SonosXML {

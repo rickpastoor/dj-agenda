@@ -69,12 +69,6 @@ struct Settings {
         nonmutating set { d.set(newValue, forKey: "outputMode") }
     }
 
-    /// Kamernaam van de Sonos zoals in de Sonos-app; gevonden via Bonjour. Leeg: de Sonos die speelt.
-    var sonosRoom: String {
-        get { d.string(forKey: "sonosRoom") ?? "" }
-        nonmutating set { d.set(newValue, forKey: "sonosRoom") }
-    }
-
     /// Vast IP als terugval (als Bonjour de speaker niet vindt).
     var sonosHost: String {
         get { d.string(forKey: "sonosHost") ?? "" }

@@ -23,9 +23,6 @@ private struct GeneralSettings: View {
                 Picker("Afspelen via", selection: $model.outputMode) {
                     ForEach(AutoOutput.Mode.allCases) { Text($0.label).tag($0) }
                 }
-                CommitField("Sonos-kamer (voorkeur)", text: model.sonosRoom, prompt: "leeg: de groep die speelt") {
-                    model.sonosRoom = $0
-                }
                 CommitField("Sonos-IP (terugval)", text: model.sonosHost, prompt: "optioneel") {
                     model.sonosHost = $0
                 }

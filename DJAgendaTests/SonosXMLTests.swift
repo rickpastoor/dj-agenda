@@ -40,24 +40,22 @@ final class SonosXMLTests: XCTestCase {
         XCTAssertEqual(groups[0].members.count, 1, "Satellieten tellen niet mee")
         XCTAssertEqual(groups[1].visibleMembers.map(\.host), ["192.168.68.62"], "Stereopaar: één kamer")
         XCTAssertEqual(groups[2].visibleMembers.count, 4)
-        XCTAssertTrue(groups[2].contains(room: "kitchen"))
     }
 
     @MainActor
     func testPickPlayingGroup() {
         let g = SonosXML.groups(inZoneGroupState: Self.house)
-        let pick = { (playing: Set<String>, room: String, current: String?) in
-            SonosOutput.pick(g, playing: playing, room: room, current: current)?.name
+        let pick = { (playing: Set<String>, current: String?) in
+            SonosOutput.pick(g, playing: playing, current: current)?.name
         }
-        // Voorkeur Beam, maar de groep in de woonkamer speelt: dan die.
-        XCTAssertEqual(pick(["RINCON_LIV"], "Beam", "RINCON_BEAM"), "Living Room + 3")
-        // Een kamer die in een groep zit, telt als die groep.
-        XCTAssertEqual(pick(["RINCON_LIV", "RINCON_OFF1"], "Kitchen", "RINCON_OFF1"), "Living Room + 3")
-        // Twee groepen spelen, geen voorkeur: blijf bij de groep van nu.
-        XCTAssertEqual(pick(["RINCON_LIV", "RINCON_OFF1"], "", "RINCON_OFF1"), "Office")
-        // Niets speelt: de voorkeur, anders de groep van nu.
-        XCTAssertEqual(pick([], "Beam", "RINCON_LIV"), "Beam")
-        XCTAssertEqual(pick([], "", "RINCON_LIV"), "Living Room + 3")
+        // De muziek verhuist van de Beam naar de woonkamer: volgen.
+        XCTAssertEqual(pick(["RINCON_LIV"], "RINCON_BEAM"), "Living Room + 3")
+        // Twee groepen spelen: blijf bij de groep van nu.
+        XCTAssertEqual(pick(["RINCON_LIV", "RINCON_OFF1"], "RINCON_OFF1"), "Office")
+        // Niets speelt: de groep van nu.
+        XCTAssertEqual(pick([], "RINCON_LIV"), "Living Room + 3")
+        // Nog geen groep en niets speelt: de eerste op naam.
+        XCTAssertEqual(pick([], nil), "Beam")
     }
 
     @MainActor
