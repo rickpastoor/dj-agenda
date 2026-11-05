@@ -14,7 +14,24 @@ set -euo pipefail
 VERSION="${1:?gebruik: scripts/release.sh <versie>}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(git rev-list --count HEAD)}"
 TEAM_ID="${TEAM_ID:-ZCXSU9SYUC}"
-IDENTITY="Developer ID Application"
+
+# Het "Developer ID Application"-certificaat van dit team dat het langst geldig is, als SHA-1.
+# Staan er meer in de keychain, dan is de naam alleen dubbelzinnig. Overschrijven kan met SIGN_IDENTITY.
+newest_identity() {
+  local best="" best_end=0 hash end
+  for hash in $(security find-identity -v -p codesigning \
+                | awk -v t="($TEAM_ID)" '/Developer ID Application:/ && index($0, t) {print $2}' | sort -u); do
+    end=$(security find-certificate -a -Z -p -c "Developer ID Application" \
+          | awk -v h="$hash" '/^SHA-1 hash:/ {keep = ($3 == h)} keep' \
+          | openssl x509 -noout -enddate | cut -d= -f2)
+    end=$(date -j -f "%b %e %T %Y %Z" "$end" +%s)
+    if (( end > best_end )); then best="$hash"; best_end="$end"; fi
+  done
+  [[ -n "$best" ]] || { echo "Geen Developer ID Application-certificaat voor team $TEAM_ID." >&2; exit 1; }
+  echo "$best"
+}
+IDENTITY="${SIGN_IDENTITY:-$(newest_identity)}"
+echo "==> Ondertekenen met $IDENTITY"
 
 cd "$(dirname "$0")/.."
 OUT="build/release"
