@@ -1,0 +1,12 @@
+# Xcode
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+.swiftpm/
+
+# Eigen ondertekening (zie Signing.xcconfig)
+Signing.local.xcconfig
+
+# macOS
+.DS_Store

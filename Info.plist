@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>DJ Agenda leest je agenda zodat de DJ je volgende afspraak kan aankondigen.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>DJ Agenda bestuurt Spotify om de DJ tussen de nummers door te laten praten.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>DJ Agenda praat met je Sonos-speaker op het lokale netwerk.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_sonos._tcp</string>
+	</array>
+</dict>
+</plist>
