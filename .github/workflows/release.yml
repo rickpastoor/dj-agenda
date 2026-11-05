@@ -22,7 +22,8 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-26
+    # Apart image met Xcode 27 op macOS 27; de gewone macos-26 heeft alleen Xcode 26.
+    runs-on: xcode-27
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
@@ -31,9 +32,7 @@ jobs:
 
       - name: Xcode kiezen
         run: |
-          XCODE=$(ls -d /Applications/Xcode_27*.app | sort -V | tail -1)
-          echo "Gebruik $XCODE"
-          sudo xcode-select -s "$XCODE"
+          sudo xcode-select -s /Applications/Xcode_27.2.app
           xcodebuild -version
 
       - name: Metal-toolchain
@@ -45,7 +44,9 @@ jobs:
           P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
         run: |
           KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
-          KEYCHAIN_PASSWORD=$(uuidgen)
+          # Leeg wachtwoord: op het xcode-27-image faalt unlock-keychain met een echt wachtwoord
+          # (actions/runner-images#14837). De keychain bestaat alleen tijdens deze run.
+          KEYCHAIN_PASSWORD=""
           echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
