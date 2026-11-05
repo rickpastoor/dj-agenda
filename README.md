@@ -22,6 +22,13 @@ When the meeting starts, the DJ tells you it's time to go and pauses the music.
   minutes of the current song's end, no new song starts. Travel time from Calendar.app becomes a
   "time to leave" announcement.
 
+## Download
+
+Grab the latest `DJAgenda-<version>.dmg` from
+[Releases](https://github.com/rickpastoor/dj-agenda/releases/latest), open it and drag
+**DJAgenda** to **Applications**. The app is signed and notarized. It needs macOS 15+ on Apple
+Silicon.
+
 ## Requirements
 
 - macOS 15 or later on Apple Silicon (macOS 26 for the Apple model), Xcode 27 (tested with 27.2)

@@ -28,6 +28,18 @@ open build/Build/Products/Debug/DJAgenda.app
   `/usr/bin/log show --last 5m --info --predicate 'subsystem == "nl.rickpastoor.dj-agenda"'`.
   In zsh is `log` een ingebouwd commando, gebruik daarom het volledige pad.
 
+## Release
+
+- `scripts/release.sh 0.2` bouwt `build/release/DJAgenda-0.2.dmg`: archief (Release), export
+  met Developer ID (team `ZCXSU9SYUC`), DMG, notarisatie en stapler.
+  - Lokaal notariseren met een profiel: eenmalig
+    `xcrun notarytool store-credentials notary --apple-id … --team-id ZCXSU9SYUC`, daarna
+    `NOTARY_PROFILE=notary scripts/release.sh 0.2`. `SKIP_NOTARIZE=1` slaat het over.
+  - Het script geeft `-skipPackagePluginValidation` mee, dus "Trust & Enable" is niet nodig.
+- **CI:** `.github/workflows/release.yml`. Een tag `v0.2` pushen maakt een GitHub Release met de
+  DMG. Handmatig starten (workflow_dispatch) levert alleen een artefact op. De secrets staan
+  bovenin de workflow.
+
 ## Opbouw
 
 | Bestand | Wat |

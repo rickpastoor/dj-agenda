@@ -1,0 +1,94 @@
+# Bij een tag als v0.2: ondertekende, genotariseerde DMG als GitHub Release.
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   DEVELOPER_ID_P12           base64 van het geëxporteerde "Developer ID Application"-certificaat (.p12)
+#   DEVELOPER_ID_P12_PASSWORD  wachtwoord van die .p12
+#   NOTARY_KEY_P8              base64 van de App Store Connect API-sleutel (AuthKey_XXXX.p8)
+#   NOTARY_KEY_ID              Key ID van die sleutel
+#   NOTARY_ISSUER              Issuer ID
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versie (zonder v), bouwt alleen een artefact, geen release"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Xcode kiezen
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_27*.app | sort -V | tail -1)
+          echo "Gebruik $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Metal-toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+
+      - name: Certificaat in tijdelijke keychain
+        env:
+          P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+
+      - name: Notarisatiesleutel
+        env:
+          P8: ${{ secrets.NOTARY_KEY_P8 }}
+        run: |
+          echo "$P8" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+          echo "NOTARY_KEY_PATH=$RUNNER_TEMP/notary.p8" >> "$GITHUB_ENV"
+
+      - name: Versie
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then V="${GITHUB_REF_NAME#v}"; else V="${{ inputs.version }}"; fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+
+      - name: Bouwen, ondertekenen, notariseren
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: scripts/release.sh "$VERSION"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DJAgenda-${{ env.VERSION }}
+          path: build/release/DJAgenda-*.dmg*
+
+      - name: GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/release/DJAgenda-*.dmg build/release/DJAgenda-*.dmg.sha256 \
+            --title "DJ Agenda $VERSION" --generate-notes
+
+      - name: Opruimen
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/build.keychain-db" || true
+          rm -f "$RUNNER_TEMP/notary.p8"
