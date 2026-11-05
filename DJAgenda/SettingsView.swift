@@ -1,3 +1,4 @@
+import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
@@ -45,9 +46,46 @@ private struct GeneralSettings: View {
                 }
                 LabeledContent("Stem nu", value: model.voiceName)
             }
+            Section("Systeem") {
+                LaunchAtLoginToggle()
+            }
         }
         .formStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// "Start bij inloggen" via `SMAppService`. De status komt van macOS zelf, zodat hij klopt als je
+/// hem in Systeeminstellingen → Algemeen → Inloggen wijzigt.
+private struct LaunchAtLoginToggle: View {
+    @State private var status = SMAppService.mainApp.status
+    @State private var error: String?
+
+    var body: some View {
+        Toggle("Start bij inloggen", isOn: Binding(get: { status == .enabled || status == .requiresApproval },
+                                                   set: set))
+            .onAppear { status = SMAppService.mainApp.status }
+        if status == .requiresApproval {
+            HStack {
+                Text("Keur DJ Agenda goed in Systeeminstellingen.")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Open") { SMAppService.openSystemSettingsLoginItems() }
+            }
+        }
+        if let error {
+            Text(error).foregroundStyle(.red).font(.callout)
+        }
+    }
+
+    private func set(_ on: Bool) {
+        error = nil
+        do {
+            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+        } catch {
+            self.error = "Lukt niet: \(error.localizedDescription)"
+        }
+        status = SMAppService.mainApp.status
     }
 }
 
