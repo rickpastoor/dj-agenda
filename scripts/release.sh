@@ -108,5 +108,6 @@ else
   spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
 fi
 
-shasum -a 256 "$DMG" | tee "$DMG.sha256"
+# Alleen de bestandsnaam, zodat `shasum -c` werkt naast de download.
+(cd "$OUT" && shasum -a 256 "$(basename "$DMG")") | tee "$DMG.sha256"
 echo "==> Klaar: $DMG"
