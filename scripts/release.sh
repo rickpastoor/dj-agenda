@@ -82,11 +82,13 @@ APP="$EXPORT/DJAgenda.app"
 codesign --verify --deep --strict --verbose=2 "$APP"
 
 echo "==> DMG maken"
-STAGE="$OUT/dmg"
-mkdir -p "$STAGE"
-cp -R "$APP" "$STAGE/"
-ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "DJ Agenda" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
+# dmgbuild schrijft de Finder-indeling (achtergrond, posities) zelf, zonder Finder te besturen.
+VENV="build/dmgbuild-venv"
+[[ -x "$VENV/bin/dmgbuild" ]] || { python3 -m venv "$VENV" && "$VENV/bin/pip" install --quiet "dmgbuild==1.6.*"; }
+"$VENV/bin/dmgbuild" -s scripts/dmg/settings.py \
+  -D app="$APP" -D icon="$APP/Contents/Resources/AppIcon.icns" \
+  -D background=scripts/dmg/background.tiff \
+  "DJ Agenda" "$DMG"
 codesign --sign "$IDENTITY" --timestamp "$DMG"
 
 if [[ "${SKIP_NOTARIZE:-}" == 1 ]]; then

@@ -36,6 +36,9 @@ open build/Build/Products/Debug/DJAgenda.app
     `xcrun notarytool store-credentials notary --apple-id … --team-id ZCXSU9SYUC`, daarna
     `NOTARY_PROFILE=notary scripts/release.sh 0.2`. `SKIP_NOTARIZE=1` slaat het over.
   - Het script geeft `-skipPackagePluginValidation` mee, dus "Trust & Enable" is niet nodig.
+  - De DMG maakt `dmgbuild` (in een venv in `build/`) met `scripts/dmg/settings.py`: achtergrond
+    met pijl, vaste iconposities en de app als "DJ Agenda.app". De achtergrond teken je opnieuw met
+    `scripts/dmg/background.swift`; houd de posities gelijk aan die in `settings.py`.
 - **CI:** `.github/workflows/release.yml`. Een tag `v0.2` pushen maakt een GitHub Release met de
   DMG. Handmatig starten (workflow_dispatch) levert alleen een artefact op. De secrets staan
   bovenin de workflow.
