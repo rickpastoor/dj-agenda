@@ -4,6 +4,9 @@ Een macOS-menubalk-app (SwiftUI, Swift 6, macOS 15+) die Spotify laat klinken al
 radiostation. In de aanloop naar je volgende afspraak praat een DJ de laatste nummers aan elkaar.
 Als de afspraak begint, zegt hij dat het tijd is en zet hij de muziek op pauze.
 
+- **De interface is Engels.** Wat de DJ zegt, volgt de gekozen taal (Nederlands of Engels).
+  Code-commentaar, logs en deze notities zijn Nederlands.
+
 ## Bouwen en testen
 
 ```sh
@@ -19,7 +22,7 @@ open build/Build/Products/Debug/DJAgenda.app
 - **Ondertekenen.** `Signing.xcconfig` ondertekent standaard ad hoc. Een eigen team zet je in
   `Signing.local.xcconfig`; dat bestand staat in `.gitignore`.
 - **Debug-opties** (alleen in Debug):
-  - `--args -djTest announce`: test "Nu aankondigen";
+  - `--args -djTest announce`: test "Announce Now";
   - `-djTest texts`: drie voorbeeldteksten en het slot in de log;
   - `-djTest demo -djDemoMinutes 5`: een nep-afspraak;
   - `-djOpenSettings`: opent bij het starten het instellingenvenster.
@@ -57,7 +60,7 @@ open build/Build/Products/Debug/DJAgenda.app
 
 ## Aankondigingslogica
 
-- **Geen muziek, geen DJ.** Alleen de knop "Nu aankondigen" praat altijd.
+- **Geen muziek, geen DJ.** Alleen de knop "Announce Now" praat altijd.
 - **Aanloop**: vanaf `runUpMinutes` (12) voor de afspraak. AppleScript ziet de wachtrij niet, dus
   de aanloop wordt in minuten gerekend.
 - **Bij elk nummer in de aanloop praat de DJ over de outro** (`talkOverLead`, 7 s voor het

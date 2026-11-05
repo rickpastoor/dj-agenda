@@ -89,7 +89,7 @@ enum APIKey: String, CaseIterable, Identifiable, Sendable {
             let (data, response) = try await URLSession.shared.data(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             if status == 200 { return .success(()) }
-            let detail = status == 401 ? "sleutel ongeldig" : "HTTP \(status): \(String(decoding: data.prefix(160), as: UTF8.self))"
+            let detail = status == 401 ? "invalid key" : "HTTP \(status): \(String(decoding: data.prefix(160), as: UTF8.self))"
             return .failure(URLError(.userAuthenticationRequired, userInfo: [NSLocalizedDescriptionKey: detail]))
         } catch {
             return .failure(error)

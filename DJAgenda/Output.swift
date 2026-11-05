@@ -38,9 +38,9 @@ final class AutoOutput: Output {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .auto: "Automatisch"
-            case .mac: "Altijd de Mac"
-            case .sonos: "Altijd de Sonos"
+            case .auto: "Automatic"
+            case .mac: "Always the Mac"
+            case .sonos: "Always Sonos"
             }
         }
     }

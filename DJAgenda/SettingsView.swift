@@ -6,9 +6,9 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
-            Tab("Algemeen", systemImage: "gearshape") { GeneralSettings(model: model) }
-            Tab("Agenda's", systemImage: "calendar") { CalendarSettings(model: model) }
-            Tab("API-sleutels", systemImage: "key") { KeySettings() }
+            Tab("General", systemImage: "gearshape") { GeneralSettings(model: model) }
+            Tab("Calendars", systemImage: "calendar") { CalendarSettings(model: model) }
+            Tab("API Keys", systemImage: "key") { KeySettings() }
         }
         .frame(width: 520)
     }
@@ -19,36 +19,36 @@ private struct GeneralSettings: View {
 
     var body: some View {
         Form {
-            Section("Afspelen") {
-                Picker("Afspelen via", selection: $model.outputMode) {
+            Section("Playback") {
+                Picker("Play through", selection: $model.outputMode) {
                     ForEach(AutoOutput.Mode.allCases) { Text($0.label).tag($0) }
                 }
-                CommitField("Sonos-IP (terugval)", text: model.sonosHost, prompt: "optioneel") {
+                CommitField("Sonos IP (fallback)", text: model.sonosHost, prompt: "optional") {
                     model.sonosHost = $0
                 }
                 Stepper(value: $model.sonosClipBoost, in: SonosOutput.clipBoostRange) {
-                    LabeledContent("DJ-volume op de Sonos",
-                                   value: model.sonosClipBoost == 0 ? "gelijk aan de muziek"
-                                       : "\(model.sonosClipBoost > 0 ? "+" : "")\(model.sonosClipBoost) t.o.v. de muziek")
+                    LabeledContent("DJ volume on Sonos",
+                                   value: model.sonosClipBoost == 0 ? "same as the music"
+                                       : "\(model.sonosClipBoost > 0 ? "+" : "")\(model.sonosClipBoost) relative to the music")
                 }
-                LabeledContent("Speelt nu op", value: model.deviceName)
+                LabeledContent("Now playing on", value: model.deviceName)
             }
             Section("DJ") {
-                CommitField("Je naam", text: model.listenerName, prompt: "voor \"Radio …\"") {
+                CommitField("Your name", text: model.listenerName, prompt: "for \"Radio …\"") {
                     model.listenerName = $0
                 }
-                Picker("Taal", selection: $model.language) {
+                Picker("DJ language", selection: $model.language) {
                     ForEach(Language.allCases) { Text($0.label).tag($0) }
                 }
-                Picker("Stem", selection: $model.voiceChoice) {
+                Picker("Voice", selection: $model.voiceChoice) {
                     ForEach(DJVoice.Choice.allCases) { Text($0.label).tag($0) }
                 }
-                Picker("Tekst", selection: $model.textEngine) {
+                Picker("Script", selection: $model.textEngine) {
                     ForEach(TextWriter.Engine.allCases) { Text($0.label).tag($0) }
                 }
-                LabeledContent("Stem nu", value: model.voiceName)
+                LabeledContent("Current voice", value: model.voiceName)
             }
-            Section("Systeem") {
+            Section("System") {
                 LaunchAtLoginToggle()
             }
         }
@@ -64,12 +64,12 @@ private struct LaunchAtLoginToggle: View {
     @State private var error: String?
 
     var body: some View {
-        Toggle("Start bij inloggen", isOn: Binding(get: { status == .enabled || status == .requiresApproval },
+        Toggle("Launch at login", isOn: Binding(get: { status == .enabled || status == .requiresApproval },
                                                    set: set))
             .onAppear { status = SMAppService.mainApp.status }
         if status == .requiresApproval {
             HStack {
-                Text("Keur DJ Agenda goed in Systeeminstellingen.")
+                Text("Allow DJ Agenda in System Settings.")
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Open") { SMAppService.openSystemSettingsLoginItems() }
@@ -85,7 +85,7 @@ private struct LaunchAtLoginToggle: View {
         do {
             if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
         } catch {
-            self.error = "Lukt niet: \(error.localizedDescription)"
+            self.error = "Couldn't change this: \(error.localizedDescription)"
         }
         status = SMAppService.mainApp.status
     }
@@ -145,12 +145,12 @@ private struct CalendarSettings: View {
                         }
                     }
                 }
-                if all.isEmpty { Text("Geen agenda's gevonden.").foregroundStyle(.secondary) }
+                if all.isEmpty { Text("No calendars found.").foregroundStyle(.secondary) }
             case .denied:
-                Text("DJ Agenda heeft geen toegang tot je agenda.")
-                Button("Open Privacy-instellingen…") { model.openCalendarPrivacy() }
+                Text("DJ Agenda doesn't have access to your calendars.")
+                Button("Open Privacy Settings…") { model.openCalendarPrivacy() }
             case .unknown:
-                Text("Agenda laden…").foregroundStyle(.secondary)
+                Text("Loading calendars…").foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -164,7 +164,7 @@ private struct KeySettings: View {
             Section {
                 ForEach(APIKey.allCases) { APIKeyRow(key: $0) }
             } footer: {
-                Text("De sleutels staan in je Keychain, niet in de instellingen van de app.")
+                Text("Keys are stored in your Keychain, not in the app's settings.")
                     .foregroundStyle(.secondary)
             }
         }
@@ -189,14 +189,14 @@ private struct APIKeyRow: View {
             HStack {
                 Text(key.label).font(.headline)
                 Spacer()
-                Link("Sleutel aanmaken…", destination: key.consoleURL).font(.callout)
+                Link("Create a key…", destination: key.consoleURL).font(.callout)
             }
             HStack {
-                SecureField(stored == nil ? "Plak hier je sleutel" : "Plak een nieuwe sleutel om te vervangen",
+                SecureField(stored == nil ? "Paste your key here" : "Paste a new key to replace it",
                             text: $input)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(save)
-                Button("Bewaar", action: save)
+                Button("Save", action: save)
                     .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             HStack(spacing: 10) {
@@ -205,7 +205,7 @@ private struct APIKeyRow: View {
                 if stored != nil {
                     Button("Test") { Task { await check(stored!) } }
                         .disabled(status == .checking)
-                    Button("Verwijder", role: .destructive) {
+                    Button("Remove", role: .destructive) {
                         Keychain.delete(service: key.service)
                         refresh()
                         status = .idle
@@ -222,18 +222,18 @@ private struct APIKeyRow: View {
         switch status {
         case .checking:
             ProgressView().controlSize(.small)
-            Text("Controleren…").foregroundStyle(.secondary)
+            Text("Checking…").foregroundStyle(.secondary)
         case .ok:
-            Label("Werkt (\(masked))", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+            Label("Works (\(masked))", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
         case .failed(let why):
             Label(why, systemImage: "xmark.octagon.fill").foregroundStyle(.red).lineLimit(2)
         case .idle:
             if stored != nil {
-                Label("Opgeslagen (\(masked))", systemImage: "key.fill").foregroundStyle(.secondary)
+                Label("Saved (\(masked))", systemImage: "key.fill").foregroundStyle(.secondary)
             } else if key.value != nil {
-                Text("Uit \(key.environmentName)").foregroundStyle(.secondary)
+                Text("From \(key.environmentName)").foregroundStyle(.secondary)
             } else {
-                Text("Niet ingesteld").foregroundStyle(.secondary)
+                Text("Not set").foregroundStyle(.secondary)
             }
         }
     }
@@ -251,7 +251,7 @@ private struct APIKeyRow: View {
         let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return }
         guard Keychain.save(value, service: key.service) else {
-            status = .failed("Opslaan in de Keychain mislukt")
+            status = .failed("Couldn't save to the Keychain")
             return
         }
         input = ""

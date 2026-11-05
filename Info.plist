@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>DJ Agenda leest je agenda zodat de DJ je volgende afspraak kan aankondigen.</string>
+	<string>DJ Agenda reads your calendar so the DJ can announce your next meeting.</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>DJ Agenda bestuurt Spotify om de DJ tussen de nummers door te laten praten.</string>
+	<string>DJ Agenda controls Spotify so the DJ can talk between songs.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>DJ Agenda praat met je Sonos-speaker op het lokale netwerk.</string>
+	<string>DJ Agenda talks to your Sonos speakers on the local network.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_sonos._tcp</string>

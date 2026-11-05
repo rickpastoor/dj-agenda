@@ -101,7 +101,7 @@ final class MistralVoice {
 
     func render(_ text: String, lang: Language, female: Bool) async throws -> URL {
         guard let key = APIKey.mistral.value else {
-            throw URLError(.userAuthenticationRequired, userInfo: [NSLocalizedDescriptionKey: "geen Mistral-sleutel"])
+            throw URLError(.userAuthenticationRequired, userInfo: [NSLocalizedDescriptionKey: "no Mistral key"])
         }
         let refKey = "\(lang.rawValue)-\(female)"
         if references[refKey] == nil, let url = Self.referenceURL(lang, female: female) {
@@ -160,11 +160,11 @@ final class DJVoice: Voice {
         var female: Bool { self == .cloudFemale || self == .localFemale }
         var label: String {
             switch self {
-            case .cloudMale: "Voxtral cloud, man"
-            case .cloudFemale: "Voxtral cloud, vrouw"
-            case .localMale: "Voxtral lokaal, man"
-            case .localFemale: "Voxtral lokaal, vrouw"
-            case .system: "Systeemstem"
+            case .cloudMale: "Voxtral cloud, male"
+            case .cloudFemale: "Voxtral cloud, female"
+            case .localMale: "Voxtral local, male"
+            case .localFemale: "Voxtral local, female"
+            case .system: "System voice"
             }
         }
     }
@@ -195,12 +195,12 @@ final class DJVoice: Voice {
         switch choice {
         case .system: return system.name
         case .cloudMale, .cloudFemale:
-            return cloudProblem.map { _ in "\(choice.label) (mislukt, nu terugval)" } ?? choice.label
+            return cloudProblem.map { _ in "\(choice.label) (failed, using fallback)" } ?? choice.label
         case .localMale, .localFemale:
             switch voxtral.state {
             case .ready: return choice.label
-            case .loading(let p): return "\(choice.label) (laden \(Int(p * 100))%, nu \(system.name))"
-            case .failed: return "\(system.name) (Voxtral mislukt)"
+            case .loading(let p): return "\(choice.label) (loading \(Int(p * 100))%, using \(system.name))"
+            case .failed: return "\(system.name) (Voxtral failed)"
             case .idle: return system.name
             }
         }

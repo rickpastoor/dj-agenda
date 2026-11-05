@@ -28,7 +28,7 @@ struct DJAgendaApp: App {
         }
         .menuBarExtraStyle(.menu)
 
-        Window("DJ Agenda – Instellingen", id: "settings") {
+        Window("DJ Agenda Settings", id: "settings") {
             SettingsView(model: model)
         }
         .windowResizability(.contentSize)

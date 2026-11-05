@@ -8,7 +8,7 @@ final class SonosOutput: Output {
 
         var errorDescription: String? {
             switch self {
-            case .notFound(let what): "Sonos \(what.isEmpty ? "" : what + " ")niet gevonden. Mag DJ Agenda bij het lokale netwerk? (Systeeminstellingen → Privacy en beveiliging → Lokaal netwerk)"
+            case .notFound(let what): "Sonos \(what.isEmpty ? "" : what + " ")not found. Does DJ Agenda have local network access? (System Settings → Privacy & Security → Local Network)"
             }
         }
     }

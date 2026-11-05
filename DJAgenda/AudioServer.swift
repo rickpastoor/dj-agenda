@@ -62,7 +62,7 @@ final class AudioServer: @unchecked Sendable {
 
         guard ["GET", "HEAD"].contains(method), name.hasSuffix(".wav"), !name.hasPrefix("."),
               let body = try? Data(contentsOf: file) else {
-            send(conn, status: "404 Not Found", type: "text/plain", body: Data("niet gevonden".utf8))
+            send(conn, status: "404 Not Found", type: "text/plain", body: Data("not found".utf8))
             return
         }
         log.info("Audioserver: \(method, privacy: .public) \(name, privacy: .public) (\(body.count) bytes)")

@@ -163,9 +163,9 @@ final class AppModel {
         guard let p = player else { return "—" }
         let where_ = output.label
         switch p.status {
-        case .notRunning: return "niets (Spotify staat uit)"
-        case .stopped: return "\(where_) (gestopt)"
-        case .paused: return "\(where_) (gepauzeerd)"
+        case .notRunning: return "nothing (Spotify isn't running)"
+        case .stopped: return "\(where_) (stopped)"
+        case .paused: return "\(where_) (paused)"
         case .playing: return where_
         }
     }

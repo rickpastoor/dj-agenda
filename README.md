@@ -17,7 +17,7 @@ When the meeting starts, the DJ tells you it's time to go and pauses the music.
   generated line is checked against the calendar data, so the DJ can't invent times.
 - **Voice** by Voxtral TTS through the Mistral API (default), Voxtral running locally with MLX,
   or the macOS system voice.
-- **Dutch or English.** The interface is in Dutch.
+- **Dutch or English.** The DJ speaks either language; the interface is in English.
 - **Smart timing.** The DJ does not talk when nothing is playing. If the meeting starts within two
   minutes of the current song's end, no new song starts. Travel time from Calendar.app becomes a
   "time to leave" announcement.
@@ -50,7 +50,7 @@ open build/Build/Products/Debug/DJAgenda.app
   `Signing.xcconfig`).
 
 On first launch macOS asks for access to your calendars, permission to control Spotify, and
-access to the local network (for Sonos). Paste your API key under **Instellingen → API-sleutels**.
+access to the local network (for Sonos). Paste your API key under **Settings → API Keys**.
 
 Run the tests with:
 
@@ -63,7 +63,7 @@ Developer notes (in Dutch) are in [CLAUDE.md](CLAUDE.md).
 ## Privacy
 
 With Mistral or Claude enabled, the title, description and attendee first names of your next
-meeting are sent to that API to write the DJ's line. Choose **Lokaal model** or **Vaste zinnen**
+meeting are sent to that API to write the DJ's line. Choose **On-device model (Apple)** or **Fixed phrases**
 to keep everything on your Mac.
 
 ## License

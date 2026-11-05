@@ -11,10 +11,10 @@ final class SonosClip: NSObject, URLSessionDelegate, @unchecked Sendable {
 
         var errorDescription: String? {
             switch self {
-            case .noPlayer: "Sonos-speler niet gevonden in getGroups"
-            case .noClipSupport: "Deze Sonos ondersteunt geen audioclips (AUDIO_CLIP)"
-            case .refused(let r): "Sonos weigert de clip: \(r)"
-            case .badReply: "Onverwacht antwoord van de Sonos"
+            case .noPlayer: "Sonos player not found in getGroups"
+            case .noClipSupport: "This Sonos doesn't support audio clips (AUDIO_CLIP)"
+            case .refused(let r): "Sonos refused the clip: \(r)"
+            case .badReply: "Unexpected reply from Sonos"
             }
         }
     }

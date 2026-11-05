@@ -89,10 +89,10 @@ final class SystemVoice: Voice {
     }
 
     var name: String {
-        guard let v = voice else { return "standaardstem" }
+        guard let v = voice else { return "default voice" }
         let q = switch v.quality {
         case .premium: " (premium)"
-        case .enhanced: " (verbeterd)"
+        case .enhanced: " (enhanced)"
         default: ""
         }
         return v.name + q

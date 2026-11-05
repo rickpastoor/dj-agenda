@@ -14,9 +14,9 @@ final class TextWriter {
         var label: String {
             switch self {
             case .mistral: "Mistral Large (API)"
-            case .apple: "Lokaal model (Apple)"
+            case .apple: "On-device model (Apple)"
             case .claude: "Claude (API)"
-            case .fixed: "Vaste zinnen"
+            case .fixed: "Fixed phrases"
             }
         }
     }

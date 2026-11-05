@@ -5,7 +5,7 @@ enum Language: String, CaseIterable, Identifiable, Sendable {
     case nl, en
 
     var id: String { rawValue }
-    var label: String { self == .nl ? "Nederlands" : "English" }
+    var label: String { self == .nl ? "Dutch" : "English" }
     /// Voor in de prompt ("Write in Dutch").
     var englishName: String { self == .nl ? "Dutch" : "English" }
 

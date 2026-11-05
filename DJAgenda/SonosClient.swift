@@ -11,8 +11,8 @@ struct SonosClient: Sendable {
 
         var errorDescription: String? {
             switch self {
-            case .http(let code, let action): "Sonos antwoordde \(code) op \(action)"
-            case .missing(let what): "Sonos-antwoord mist \(what)"
+            case .http(let code, let action): "Sonos replied \(code) to \(action)"
+            case .missing(let what): "Sonos reply is missing \(what)"
             }
         }
     }

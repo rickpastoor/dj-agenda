@@ -10,8 +10,8 @@ final class MacOutput {
             switch self {
             case .script(let msg, let code):
                 code == -1743
-                    ? "Geen toestemming om Spotify te besturen (Systeeminstellingen → Privacy en beveiliging → Automatisering)."
-                    : "AppleScript-fout \(code): \(msg)"
+                    ? "No permission to control Spotify (System Settings → Privacy & Security → Automation)."
+                    : "AppleScript error \(code): \(msg)"
             }
         }
 
@@ -125,7 +125,7 @@ private final class AppleScriptRunner: @unchecked Sendable {
             script = s
         } else {
             guard let s = NSAppleScript(source: source) else {
-                throw MacOutput.Failure.script("kan script niet maken", code: 0)
+                throw MacOutput.Failure.script("couldn't create script", code: 0)
             }
             compiled[source] = s
             script = s
