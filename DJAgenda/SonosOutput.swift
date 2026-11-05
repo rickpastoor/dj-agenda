@@ -13,21 +13,34 @@ final class SonosOutput: Output {
         }
     }
 
-    /// Kamernaam zoals in de Sonos-app (via Bonjour), en/of een vast IP als terugval.
-    /// Allebei leeg: de eerste Sonos die speelt (of anders de eerste die antwoordt).
+    /// Voorkeurskamer zoals in de Sonos-app. Speelt die kamer (of zijn groep), dan wint hij;
+    /// anders neemt de app de groep die Spotify speelt. Leeg: altijd de groep die speelt.
     var room: String
+    /// Vast IP als terugval, voor als Bonjour niets vindt.
     var fixedHost: String
-    var clipVolume = 35
+    /// De DJ volgt het volume van elke speaker, plus dit aantal stappen (de muziek gaat zelf zachter).
+    var clipBoost = SonosOutput.defaultClipBoost
+    nonisolated static let defaultClipBoost = 3
+    nonisolated static let clipBoostRange = -10...15
+
+    /// Clipvolume bij dit muziekvolume. Is dat onbekend, dan een rustige 20.
+    nonisolated static func clipVolume(music: Int?, boost: Int) -> Int {
+        guard let music else { return 20 }
+        return min(max(music + boost, 3), 70)
+    }
+
+    /// Zo vaak kijkt de app opnieuw welke groep speelt.
+    static let refreshInterval: TimeInterval = 10
 
     private let server: AudioServer
     private let speaker: Speaker
-    private(set) var host: String?
-    private var roomName: String?
-    private var coordinator: String?
-    private var coordinatorCheckedAt = Date.distantPast
-    private var clip: SonosClip?
-    /// Eén zoekopdracht tegelijk, ook als de DJ-lus en de testknop tegelijk vragen.
-    private var resolving: Task<String, Error>?
+    /// Speakers die eerder antwoordden; elke speaker kent de hele indeling van het huis.
+    private var knownHosts: [String] = []
+    private(set) var group: SonosGroup?
+    private var refreshedAt = Date.distantPast
+    private var clips: [String: SonosClip] = [:]
+    /// Eén verversing tegelijk, ook als de DJ-lus en de testknop tegelijk vragen.
+    private var refreshing: Task<SonosGroup, Error>?
 
     init(room: String, fixedHost: String, server: AudioServer, speaker: Speaker) {
         self.room = room
@@ -36,71 +49,104 @@ final class SonosOutput: Output {
         self.speaker = speaker
     }
 
-    var label: String { "Sonos \(roomName ?? (room.isEmpty ? "" : room))".trimmingCharacters(in: .whitespaces) }
+    var label: String { "Sonos \(group?.name ?? room)".trimmingCharacters(in: .whitespaces) }
 
     func reset() {
-        resolving = nil
-        host = nil
-        coordinator = nil
-        clip = nil
+        refreshing = nil
+        group = nil
+        refreshedAt = .distantPast
+        knownHosts = []
+        clips = [:]
     }
 
-    // MARK: - Verbinden
+    // MARK: - Welke groep speelt
 
-    private func resolve() async throws -> String {
-        if let host { return host }
-        if let resolving { return try await resolving.value }
-        let task = Task { try await self.findSpeaker() }
-        resolving = task
-        defer { resolving = nil }
+    /// Speelt deze groep muziek? Tv-geluid en line-in tellen niet: daar praat de DJ niet overheen.
+    nonisolated static func playsMusic(state: String, uri: String) -> Bool {
+        guard state == "PLAYING" || state == "TRANSITIONING" else { return false }
+        return !["x-sonos-htastream:", "x-rincon-stream:"].contains { uri.hasPrefix($0) }
+    }
+
+    /// Kies een groep. Volgorde: de voorkeurskamer als die speelt, dan de groep van nu als die
+    /// nog speelt (niet heen en weer springen), dan een andere groep die speelt. Speelt er niets,
+    /// dan de voorkeurskamer, de groep van nu, of de eerste.
+    nonisolated static func pick(_ groups: [SonosGroup], playing: Set<String>, room: String, current: String?) -> SonosGroup? {
+        let preferred = room.isEmpty ? nil : groups.first { $0.contains(room: room) }
+        let now = groups.first { $0.coordinator == current }
+        let isPlaying = { (g: SonosGroup?) in g.map { playing.contains($0.coordinator) } ?? false }
+        if isPlaying(preferred) { return preferred }
+        if isPlaying(now) { return now }
+        if let other = groups.filter({ playing.contains($0.coordinator) }).min(by: { $0.name < $1.name }) {
+            return other
+        }
+        return preferred ?? now ?? groups.min { $0.name < $1.name }
+    }
+
+    private func currentGroup() async throws -> SonosGroup {
+        if let group, Date().timeIntervalSince(refreshedAt) < Self.refreshInterval { return group }
+        if let refreshing { return try await refreshing.value }
+        let task = Task { try await self.refresh() }
+        refreshing = task
+        defer { refreshing = nil }
         return try await task.value
     }
 
-    private func findSpeaker() async throws -> String {
-        let anyRoom = room.isEmpty && fixedHost.isEmpty
-        var candidates: [(host: String, room: String)] = []
-        if !room.isEmpty || anyRoom {
-            let found = await SonosDiscovery.find()
-            log.info("Sonos gevonden: \(found.map { "\($0.room) (\($0.host))" }.joined(separator: ", "), privacy: .public)")
-            candidates += found
-                .filter { anyRoom || $0.room.caseInsensitiveCompare(room) == .orderedSame }
-                .map { ($0.host, $0.room) }
-        }
-        if !fixedHost.isEmpty { candidates.append((fixedHost, room.isEmpty ? fixedHost : room)) }
+    private func refresh() async throws -> SonosGroup {
+        let groups = try await fetchGroups()
 
-        // Meteen testen of hij antwoordt; dit is ook het moment dat macOS om toestemming vraagt.
-        // Zonder vaste kamer gaat een speler die speelt voor.
-        var firstOK: (host: String, room: String)?
-        for c in candidates {
-            do {
-                let state = try await SonosClient(host: c.host).transportState()
-                if !anyRoom || state == "PLAYING" { return use(c) }
-                if firstOK == nil { firstOK = c }
-            } catch {
-                log.error("Sonos \(c.host, privacy: .public): \(String(describing: error), privacy: .public)")
+        // Per groep de coördinator vragen of hij speelt, allemaal tegelijk.
+        let playing = await withTaskGroup(of: String?.self) { tasks in
+            for g in groups {
+                guard let host = g.coordinatorHost else { continue }
+                tasks.addTask {
+                    let client = SonosClient(host: host)
+                    guard let state = try? await client.transportState(),
+                          let info = try? await client.positionInfo(),
+                          Self.playsMusic(state: state, uri: info.uri) else { return nil }
+                    return g.coordinator
+                }
             }
+            var out = Set<String>()
+            for await c in tasks { if let c { out.insert(c) } }
+            return out
         }
-        if let firstOK { return use(firstOK) }
-        throw Failure.notFound(anyRoom ? "" : room.isEmpty ? fixedHost : "'\(room)'")
+
+        guard let chosen = Self.pick(groups, playing: playing, room: room, current: group?.coordinator) else {
+            throw Failure.notFound(room)
+        }
+        if chosen != group {
+            log.info("Sonos: \(chosen.name, privacy: .public) (coördinator \(chosen.coordinatorHost ?? "?", privacy: .public)); speelt: \(groups.filter { playing.contains($0.coordinator) }.map(\.name).joined(separator: ", "), privacy: .public)")
+            try? server.start()
+        }
+        group = chosen
+        refreshedAt = Date()
+        knownHosts = groups.flatMap { $0.members.map(\.host) }
+        return chosen
     }
 
-    private func use(_ c: (host: String, room: String)) -> String {
-        host = c.host
-        roomName = c.room
-        clip = SonosClip(host: c.host)
-        try? server.start()
-        log.info("Sonos: \(c.room, privacy: .public) op \(c.host, privacy: .public)")
-        return c.host
+    /// De indeling ophalen bij een speaker die antwoordt. Eerst bekende adressen, dan Bonjour.
+    private func fetchGroups() async throws -> [SonosGroup] {
+        var tried = Set<String>()
+        func attempt(_ hosts: [String]) async -> [SonosGroup]? {
+            for h in hosts where !h.isEmpty && tried.insert(h).inserted {
+                do { return try await SonosClient(host: h).groups() } catch {
+                    log.error("Sonos \(h, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                }
+            }
+            return nil
+        }
+        // Dit is ook het moment dat macOS om toegang tot het lokale netwerk vraagt.
+        if let g = await attempt([group?.coordinatorHost].compactMap { $0 } + knownHosts) { return g }
+        let found = await SonosDiscovery.find()
+        log.info("Sonos gevonden: \(found.map { "\($0.room) (\($0.host))" }.joined(separator: ", "), privacy: .public)")
+        if let g = await attempt(found.map(\.host) + [fixedHost]) { return g }
+        throw Failure.notFound(room)
     }
 
-    /// Spotify Connect speelt op de groepscoördinator; af en toe opnieuw opzoeken.
     private func coordinatorClient() async throws -> SonosClient {
-        let h = try await resolve()
-        if coordinator == nil || Date().timeIntervalSince(coordinatorCheckedAt) > 30 {
-            coordinator = (try? await SonosClient(host: h).coordinatorHost()) ?? h
-            coordinatorCheckedAt = Date()
-        }
-        return SonosClient(host: coordinator ?? h)
+        let g = try await currentGroup()
+        guard let host = g.coordinatorHost else { throw Failure.notFound(g.name) }
+        return SonosClient(host: host)
     }
 
     // MARK: - Output
@@ -130,21 +176,40 @@ final class SonosOutput: Output {
                                trackID: Self.trackID(uri: info.uri, title: info.title,
                                                      artist: info.artist, duration: info.duration))
         } catch {
-            reset()   // volgende keer opnieuw zoeken (IP kan veranderd zijn)
+            group = nil   // volgende keer opnieuw kijken welke groep speelt (IP kan veranderd zijn)
             throw error
         }
     }
 
-    /// Clip op de Sonos; lukt dat niet, dan via de Mac-speakers.
+    /// Clip op elke speaker van de groep tegelijk; lukt dat nergens, dan via de Mac-speakers.
     private func speak(_ audio: URL) async {
         do {
-            _ = try await resolve()
-            guard let host, let clip, let me = AudioServer.localAddress(toward: host) else {
+            let g = try await currentGroup()
+            let hosts = g.visibleMembers.map(\.host)
+            guard let first = hosts.first, let me = AudioServer.localAddress(toward: first) else {
                 throw Failure.notFound("adres")
             }
             let url = server.url(for: audio, host: me)
-            log.info("Clip naar \(host, privacy: .public): \(url.absoluteString, privacy: .public)")
-            try await clip.play(url, duration: SonosClip.duration(of: audio), volume: clipVolume)
+            let duration = SonosClip.duration(of: audio)
+            let boost = clipBoost
+            let targets = hosts.map { h in (h, clips[h] ?? SonosClip(host: h)) }
+            for (h, c) in targets { clips[h] = c }
+            log.info("Clip naar \(g.name, privacy: .public) (\(hosts.joined(separator: ", "), privacy: .public)): \(url.absoluteString, privacy: .public)")
+            let played = await withTaskGroup(of: Bool.self) { tasks in
+                for (h, clip) in targets {
+                    tasks.addTask {
+                        let volume = Self.clipVolume(music: try? await SonosClient(host: h).volume(), boost: boost)
+                        do { try await clip.play(url, duration: duration, volume: volume); return true } catch {
+                            log.error("Audioclip op \(h, privacy: .public) mislukt: \(error.localizedDescription, privacy: .public)")
+                            return false
+                        }
+                    }
+                }
+                var any = false
+                for await ok in tasks { any = any || ok }
+                return any
+            }
+            if !played { throw Failure.notFound("audioclip") }
         } catch {
             log.error("Audioclip op Sonos mislukt (\(error.localizedDescription, privacy: .public)); ik speel de DJ via de Mac af.")
             await speaker.play(audio)

@@ -101,8 +101,16 @@ dan probeert de app het pas na 5 minuten opnieuw.
 **Sonos: lokaal**
 - **Status en besturing:** UPnP/SOAP op poort 1400 (AVTransport). Spotify Connect speelt op de
   groepscoördinator, en die vind je via `ZoneGroupTopology`.
-- **Ontdekken:** Bonjour `_sonos._tcp`. Je kunt een kamernaam instellen, en een vast IP als
-  terugval. Zonder kamer kiest de app de Sonos die speelt.
+- **Ontdekken:** Bonjour `_sonos._tcp`, met een vast IP als terugval. Daarna haalt de app elke
+  10 s de groepen op (`ZoneGroupState`, bij een speaker die eerder antwoordde) en vraagt hij elke
+  coördinator of die speelt. Tv-geluid (`x-sonos-htastream:`) en line-in tellen niet als muziek.
+- **Welke groep** (`SonosOutput.pick`):
+  1. de groep met de voorkeurskamer, als die speelt;
+  2. anders de groep van nu, als die nog speelt (dan springt de app niet heen en weer);
+  3. anders een andere groep die speelt;
+  4. speelt er niets, dan de voorkeurskamer of de groep van nu.
+  Een kamer in een groep telt als die hele groep. Satellieten en de tweede speaker van een
+  stereopaar (`Invisible="1"`) tellen niet als kamer.
 - **De DJ als audioclip** via `wss://<ip>:1443/websocket/api`, zoals het PyPI-pakket
   `sonos-websocket` doet. De Sonos zet de muziek zelf zachter.
   - Headers: `X-Sonos-Api-Key: 123e4567-e89b-12d3-a456-426655440000` en
@@ -112,6 +120,11 @@ dan probeert de app het pas na 5 minuten opnieuw.
     1. `[{}, {}]` geeft het `householdId`;
     2. `groups:1 getGroups`: kies de speler met dezelfde `websocketUrl` en controleer `AUDIO_CLIP`;
     3. `audioClip:1 loadAudioClip` met de `streamUrl`.
+  - De clip gaat tegelijk naar elke speaker van de groep, want een audioclip speelt maar op één
+    speler. Lukt het nergens, dan praat de DJ via de Mac.
+  - **Volume:** de clip volgt het volume van elke speaker (`GetVolume`), plus `clipBoost` stappen
+    (standaard +3, in te stellen van −10 tot +15). Het minimum is 3 en het maximum 70. Een vast
+    volume klonk veel te hard bij zachte muziek.
   - De app wacht zelf de duur van de clip af.
 - **Audio serveren:** een kleine `NWListener`. De app neemt de eerste vrije poort vanaf 8765 en
   het eigen LAN-IP richting de Sonos.

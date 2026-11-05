@@ -81,10 +81,10 @@ struct Settings {
         nonmutating set { d.set(newValue, forKey: "sonosHost") }
     }
 
-    /// Volume van de DJ-clip op de Sonos (0 = Sonos-standaard).
-    var clipVolume: Int {
-        get { d.object(forKey: "clipVolume") as? Int ?? 35 }
-        nonmutating set { d.set(newValue, forKey: "clipVolume") }
+    /// Hoeveel stappen de DJ-clip op de Sonos harder (of zachter) is dan de muziek op die speaker.
+    var clipBoost: Int {
+        get { d.object(forKey: "clipBoost") as? Int ?? SonosOutput.defaultClipBoost }
+        nonmutating set { d.set(newValue, forKey: "clipBoost") }
     }
 
     /// Gekozen agenda's; `nil` (nog nooit gekozen) betekent alle agenda's.

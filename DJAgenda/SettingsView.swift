@@ -23,11 +23,16 @@ private struct GeneralSettings: View {
                 Picker("Afspelen via", selection: $model.outputMode) {
                     ForEach(AutoOutput.Mode.allCases) { Text($0.label).tag($0) }
                 }
-                CommitField("Sonos-kamer", text: model.sonosRoom, prompt: "leeg: de Sonos die speelt") {
+                CommitField("Sonos-kamer (voorkeur)", text: model.sonosRoom, prompt: "leeg: de groep die speelt") {
                     model.sonosRoom = $0
                 }
                 CommitField("Sonos-IP (terugval)", text: model.sonosHost, prompt: "optioneel") {
                     model.sonosHost = $0
+                }
+                Stepper(value: $model.sonosClipBoost, in: SonosOutput.clipBoostRange) {
+                    LabeledContent("DJ-volume op de Sonos",
+                                   value: model.sonosClipBoost == 0 ? "gelijk aan de muziek"
+                                       : "\(model.sonosClipBoost > 0 ? "+" : "")\(model.sonosClipBoost) t.o.v. de muziek")
                 }
                 LabeledContent("Speelt nu op", value: model.deviceName)
             }

@@ -20,17 +20,51 @@ final class SonosXMLTests: XCTestCase {
                        "x-sonos-spotify:spotify%3atrack%3aabc?sid=9&flags=8224")
     }
 
-    func testCoordinatorOfGroup() {
-        let state = """
-        <ZoneGroupState><ZoneGroups>\
-        <ZoneGroup Coordinator="RINCON_A" ID="RINCON_A:1"><ZoneGroupMember UUID="RINCON_A" Location="http://192.168.68.59:1400/xml/device_description.xml" ZoneName="Living Room"/></ZoneGroup>\
-        <ZoneGroup Coordinator="RINCON_C" ID="RINCON_C:7"><ZoneGroupMember UUID="RINCON_B" Location="http://192.168.68.62:1400/xml/device_description.xml" ZoneName="Office"/>\
-        <ZoneGroupMember UUID="RINCON_C" Location="http://192.168.68.58:1400/xml/device_description.xml" ZoneName="Office"/></ZoneGroup>\
-        </ZoneGroups></ZoneGroupState>
-        """
-        XCTAssertEqual(SonosXML.coordinatorHost(forMemberHost: "192.168.68.62", inZoneGroupState: state), "192.168.68.58")
-        XCTAssertEqual(SonosXML.coordinatorHost(forMemberHost: "192.168.68.59", inZoneGroupState: state), "192.168.68.59")
-        XCTAssertNil(SonosXML.coordinatorHost(forMemberHost: "10.0.0.1", inZoneGroupState: state))
+    /// De indeling zoals die bij Rick thuis staat: een Beam, een stereopaar en een groep van vier.
+    static let house = """
+    <ZoneGroupState><ZoneGroups>\
+    <ZoneGroup Coordinator="RINCON_BEAM" ID="RINCON_BEAM:1"><ZoneGroupMember UUID="RINCON_BEAM" Location="http://192.168.68.78:1400/xml/device_description.xml" ZoneName="Beam"><Satellite UUID="RINCON_SUB" Location="http://192.168.68.90:1400/xml/device_description.xml" ZoneName="Beam" Invisible="1"/></ZoneGroupMember></ZoneGroup>\
+    <ZoneGroup Coordinator="RINCON_OFF1" ID="RINCON_OFF1:2"><ZoneGroupMember UUID="RINCON_OFF1" Location="http://192.168.68.62:1400/xml/device_description.xml" ZoneName="Office"/>\
+    <ZoneGroupMember UUID="RINCON_OFF2" Location="http://192.168.68.58:1400/xml/device_description.xml" ZoneName="Office" Invisible="1"/></ZoneGroup>\
+    <ZoneGroup Coordinator="RINCON_LIV" ID="RINCON_LIV:3"><ZoneGroupMember UUID="RINCON_DIN" Location="http://192.168.68.67:1400/xml/device_description.xml" ZoneName="Dining Room"/>\
+    <ZoneGroupMember UUID="RINCON_DIN2" Location="http://192.168.68.56:1400/xml/device_description.xml" ZoneName="Dining Room 2"/>\
+    <ZoneGroupMember UUID="RINCON_LIV" Location="http://192.168.68.59:1400/xml/device_description.xml" ZoneName="Living Room"/>\
+    <ZoneGroupMember UUID="RINCON_KIT" Location="http://192.168.68.68:1400/xml/device_description.xml" ZoneName="Kitchen"/></ZoneGroup>\
+    </ZoneGroups></ZoneGroupState>
+    """
+
+    func testGroups() {
+        let groups = SonosXML.groups(inZoneGroupState: Self.house)
+        XCTAssertEqual(groups.map(\.name), ["Beam", "Office", "Living Room + 3"])
+        XCTAssertEqual(groups.map(\.coordinatorHost), ["192.168.68.78", "192.168.68.62", "192.168.68.59"])
+        XCTAssertEqual(groups[0].members.count, 1, "Satellieten tellen niet mee")
+        XCTAssertEqual(groups[1].visibleMembers.map(\.host), ["192.168.68.62"], "Stereopaar: één kamer")
+        XCTAssertEqual(groups[2].visibleMembers.count, 4)
+        XCTAssertTrue(groups[2].contains(room: "kitchen"))
+    }
+
+    @MainActor
+    func testPickPlayingGroup() {
+        let g = SonosXML.groups(inZoneGroupState: Self.house)
+        let pick = { (playing: Set<String>, room: String, current: String?) in
+            SonosOutput.pick(g, playing: playing, room: room, current: current)?.name
+        }
+        // Voorkeur Beam, maar de groep in de woonkamer speelt: dan die.
+        XCTAssertEqual(pick(["RINCON_LIV"], "Beam", "RINCON_BEAM"), "Living Room + 3")
+        // Een kamer die in een groep zit, telt als die groep.
+        XCTAssertEqual(pick(["RINCON_LIV", "RINCON_OFF1"], "Kitchen", "RINCON_OFF1"), "Living Room + 3")
+        // Twee groepen spelen, geen voorkeur: blijf bij de groep van nu.
+        XCTAssertEqual(pick(["RINCON_LIV", "RINCON_OFF1"], "", "RINCON_OFF1"), "Office")
+        // Niets speelt: de voorkeur, anders de groep van nu.
+        XCTAssertEqual(pick([], "Beam", "RINCON_LIV"), "Beam")
+        XCTAssertEqual(pick([], "", "RINCON_LIV"), "Living Room + 3")
+    }
+
+    @MainActor
+    func testTVIsNotMusic() {
+        XCTAssertTrue(SonosOutput.playsMusic(state: "PLAYING", uri: "x-sonos-vli:RINCON_LIV:2,spotify:abc"))
+        XCTAssertFalse(SonosOutput.playsMusic(state: "PLAYING", uri: "x-sonos-htastream:RINCON_BEAM:spdif"))
+        XCTAssertFalse(SonosOutput.playsMusic(state: "PAUSED_PLAYBACK", uri: "x-sonos-vli:RINCON_LIV:2,spotify:abc"))
     }
 
     @MainActor
@@ -41,5 +75,12 @@ final class SonosXMLTests: XCTestCase {
         XCTAssertNotEqual(a, b, "Zelfde sessie-URI, ander nummer")
         XCTAssertEqual(SonosOutput.trackID(uri: "x-file-cifs://nas/a.mp3", title: "x", artist: "y", duration: 1),
                        "x-file-cifs://nas/a.mp3")
+    }
+
+    func testClipVolumeFollowsMusic() {
+        XCTAssertEqual(SonosOutput.clipVolume(music: 10, boost: 3), 13)
+        XCTAssertEqual(SonosOutput.clipVolume(music: 2, boost: -5), 3, "Nooit onhoorbaar")
+        XCTAssertEqual(SonosOutput.clipVolume(music: 90, boost: 10), 70, "Nooit keihard")
+        XCTAssertEqual(SonosOutput.clipVolume(music: nil, boost: 3), 20)
     }
 }
