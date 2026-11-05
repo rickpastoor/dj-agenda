@@ -1,4 +1,8 @@
-# DJ Agenda
+<p align="center">
+  <img src="DJAgenda/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png" width="160" alt="DJ Agenda icon">
+</p>
+
+<h1 align="center">DJ Agenda</h1>
 
 A macOS menu bar app that turns Spotify into a radio station that knows your calendar.
 
