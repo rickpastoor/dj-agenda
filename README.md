@@ -26,7 +26,7 @@ When the meeting starts, the DJ tells you it's time to go and pauses the music.
 
 Grab the latest `DJAgenda-<version>.dmg` from
 [Releases](https://github.com/rickpastoor/dj-agenda/releases/latest), open it and drag
-**DJAgenda** to **Applications**. The app is signed and notarized. It needs macOS 15+ on Apple
+**DJ Agenda** to **Applications**. The app is signed and notarized. It needs macOS 15+ on Apple
 Silicon.
 
 ## Requirements
@@ -59,6 +59,19 @@ xcodebuild -project DJAgenda.xcodeproj -scheme DJAgenda -derivedDataPath build t
 ```
 
 Developer notes (in Dutch) are in [CLAUDE.md](CLAUDE.md).
+
+## API keys
+
+- **Where they live.** Paste a key under **Settings → API Keys** and it goes into your macOS
+  Keychain, not into the app's settings. You can also set `MISTRAL_API_KEY` or
+  `ANTHROPIC_API_KEY` in the environment. The app never logs a key.
+- **Set a spend limit first.** Before you paste a key, set a low monthly spend limit and a usage
+  alert in the [Mistral](https://console.mistral.ai) or [Anthropic](https://console.anthropic.com)
+  console. DJ Agenda uses very little (a few short texts and voice clips per meeting), but a limit
+  protects you if a key ever leaks.
+- **Never commit a key.** If you build from source and put a key in a file, keep that file out of
+  git (add it to `.gitignore`). Deleting a committed key later does not remove it from the git
+  history: revoke it in the console and create a new one.
 
 ## Privacy
 

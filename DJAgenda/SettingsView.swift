@@ -162,9 +162,17 @@ private struct KeySettings: View {
     var body: some View {
         Form {
             Section {
+                Label {
+                    Text("Before you paste a key, set a low monthly spend limit and a usage alert in the Mistral or Anthropic console. DJ Agenda uses very little, but a limit is always a good idea, in case a key ever leaks.")
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "exclamationmark.shield").foregroundStyle(.orange)
+                }
+            }
+            Section {
                 ForEach(APIKey.allCases) { APIKeyRow(key: $0) }
             } footer: {
-                Text("Keys are stored in your Keychain, not in the app's settings.")
+                Text("Keys are stored in your Keychain, not in the app's settings, and are never logged.")
                     .foregroundStyle(.secondary)
             }
         }
